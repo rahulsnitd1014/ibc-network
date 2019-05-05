@@ -13,9 +13,9 @@ export class Trace extends Contract {
     public  operatorsMapping: string[] = ['$eq', '$gt', '$gte', '$lt', '$lte', '$ne'];
     public explicitOpertors: string[] = ['OR', 'AND'];
     public explicitOpertorsMapping: string[] = ['$or', '$and'];
-    public async initLedger(ctx: Context) {
-        console.info('============= START : Initialize Ledger ===========');
-        console.info('============= END : Initialize Ledger ===========');
+    public async initTraceLedger(ctx: Context) {
+        console.info('============= START : Initialize initTraceLedger ===========');
+        console.info('============= END : Initialize initTraceLedger ===========');
     }
 
     // public async createASN(ctx: Context, poNumber: string, asnXML: string, asnJson: string) {

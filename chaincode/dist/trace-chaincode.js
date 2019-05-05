@@ -37,9 +37,9 @@ class Trace extends fabric_contract_api_1.Contract {
         //     }
         // }
     }
-    async initLedger(ctx) {
-        console.info('============= START : Initialize Ledger ===========');
-        console.info('============= END : Initialize Ledger ===========');
+    async initTraceLedger(ctx) {
+        console.info('============= START : Initialize initTraceLedger ===========');
+        console.info('============= END : Initialize initTraceLedger ===========');
     }
     // public async createASN(ctx: Context, poNumber: string, asnXML: string, asnJson: string) {
     //     console.info('============= START : Create ASN ===========');

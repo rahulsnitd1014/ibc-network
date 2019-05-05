@@ -4,7 +4,7 @@ export declare class Trace extends Contract {
     operatorsMapping: string[];
     explicitOpertors: string[];
     explicitOpertorsMapping: string[];
-    initLedger(ctx: Context): Promise<void>;
+    initTraceLedger(ctx: Context): Promise<void>;
     createPO(ctx: Context, poNumber: string, poJson: string): Promise<string>;
     createEvent(ctx: Context, eventId: string, eventJson: string): Promise<string>;
     POHistory(ctx: Context, poNumber: string): Promise<string>;
