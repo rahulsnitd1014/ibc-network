@@ -124,7 +124,7 @@ if [ "${NO_CHAINCODE}" != "true" ]; then
 
 	# Invoke chaincode on peer0.org1 and peer0.org2
 	#echo "Sending invoke transaction on peer0.org1 peer0.org2..."
-	#chaincodeInvoke 1 2
+	chaincodeInvoke 0 1
 	
 
 	# Query on chaincode on peer1.org2, check if the result is 90

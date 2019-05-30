@@ -130,6 +130,29 @@ export class Trace extends Contract {
         return resp;
     }
 
+    public async createItemEvent(ctx: Context, clientCode: string, encLogic: string, startITN: string, endITN: string, eventJson: string): Promise<string> {
+        console.info('============= START : Create Item Event ===========');
+        const obj = this.convertToJson(eventJson);
+        obj[`docType`] = obj.docType || 'ITEM_EVENT';
+        let key = ctx.stub.createCompositeKey(clientCode+encLogic, [startITN, endITN]);
+        await ctx.stub.putState(key, Buffer.from(JSON.stringify(obj)));
+        console.info('============= END : Create Item Event ===========');
+        return eventJson;
+    }
+
+    public async queryHistoryByKeyRange(ctx: Context, startITN: string, endITN: string, docType: string): Promise<string> {
+        console.info('============= START : queryHistoryByKeyRange ===========');
+        if (!startITN || !docType) {
+            throw({err: 'queryHistoryByKeyRange startITN and DocType are required fields'});
+        }
+        const history = [];
+        const historyIt  = await ctx.stub.getStateByRange(startITN, endITN);
+        let resp =  await this.serializeData(history, historyIt);
+        resp = resp.filter((res) => res.docType === docType);
+        console.info('============= END : queryHistoryByKeyRange ===========');
+        return resp;
+    }
+
     private async serializeData(arr, obj: Iterators.HistoryQueryIterator | Iterators.StateQueryIterator) {
         let flag = true;
         while (flag) {
