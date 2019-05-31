@@ -1,0 +1,3 @@
+bin/
+chaincode/dist/
+chaincode/node_modules/

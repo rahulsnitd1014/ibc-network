@@ -11,41 +11,12 @@ export class Trace extends Contract {
 
     public  operators: string[] = ['EQ', 'GT', 'GTE', 'LT', 'LTE', 'NE'];
     public  operatorsMapping: string[] = ['$eq', '$gt', '$gte', '$lt', '$lte', '$ne'];
-    public explicitOpertors: string[] = ['OR', 'AND'];
-    public explicitOpertorsMapping: string[] = ['$or', '$and'];
+    public explicitOpertors: string[] = ['OR', 'AND', 'NOR', 'NOT'];
+    public explicitOpertorsMapping: string[] = ['$or', '$and', '$nor', '$not'];
     public async initTraceLedger(ctx: Context) {
         console.info('============= START : Initialize initTraceLedger ===========');
         console.info('============= END : Initialize initTraceLedger ===========');
     }
-
-    // public async createASN(ctx: Context, poNumber: string, asnXML: string, asnJson: string) {
-    //     console.info('============= START : Create ASN ===========');
-    //     const advanceShipNotice: AdvanceShipNotice = JSON.parse(asnJson);
-    //     const obj: asn = {
-    //         advanceShipNotice,
-    //         asnJson,
-    //         asnXML,
-    //         docType: 'ASN',
-    //         poNumber,
-    //     };
-    //     obj[`status`] = advanceShipNotice.status || 'ACTIVE';
-
-    //     console.info('Asn Json  asn:: ' + obj.asnJson + '::::=====>>>'
-    // + obj.advanceShipNotice.FileHeader.GSSenderID +
-    //     '=====>>>' + obj.asnXML);
-
-    //     await ctx.stub.putState(poNumber, Buffer.from(JSON.stringify(asn)));
-    //     console.info('============= END : Create ASN ===========');
-    // }
-
-    // public async queryASN(ctx: Context, poNumber: string): Promise<string> {
-    //     const asnAsBytes = await ctx.stub.getState(poNumber); // get the asn from chaincode state
-    //     if (!asnAsBytes || asnAsBytes.length === 0) {
-    //         throw new Error(`${poNumber} does not exist`);
-    //     }
-    //     console.log(asnAsBytes.toString());
-    //     return asnAsBytes.toString();
-    // }
 
     public async createPO(ctx: Context, poNumber: string, poJson: string): Promise<string> {
         console.info('============= START : Create PO ===========');
@@ -130,17 +101,19 @@ export class Trace extends Contract {
         return resp;
     }
 
-    public async createItemEvent(ctx: Context, clientCode: string, encLogic: string, startITN: string, endITN: string, eventJson: string): Promise<string> {
+    public async createItemEvent(ctx: Context, clientCode: string, encLogic: string, startITN: string,
+                                 endITN: string, eventJson: string): Promise<string> {
         console.info('============= START : Create Item Event ===========');
         const obj = this.convertToJson(eventJson);
         obj[`docType`] = obj.docType || 'ITEM_EVENT';
-        let key = ctx.stub.createCompositeKey(clientCode+encLogic, [startITN, endITN]);
+        const key = ctx.stub.createCompositeKey(clientCode + encLogic, [startITN, endITN]);
         await ctx.stub.putState(key, Buffer.from(JSON.stringify(obj)));
         console.info('============= END : Create Item Event ===========');
         return eventJson;
     }
 
-    public async queryHistoryByKeyRange(ctx: Context, startITN: string, endITN: string, docType: string): Promise<string> {
+    public async queryHistoryByKeyRange(ctx: Context, startITN: string, endITN: string,
+                                        docType: string): Promise<string> {
         console.info('============= START : queryHistoryByKeyRange ===========');
         if (!startITN || !docType) {
             throw({err: 'queryHistoryByKeyRange startITN and DocType are required fields'});
