@@ -15,6 +15,7 @@ export class Trace extends Contract {
     public operatorsMapping: string[] = ['$eq', '$gt', '$gte', '$lt', '$lte', '$ne'];
     public explicitOpertors: string[] = ['OR', 'AND', 'NOR', 'NOT'];
     public explicitOpertorsMapping: string[] = ['$or', '$and', '$nor', '$not'];
+        
     public async initTraceLedger(ctx: Context) {
         console.info('============= START : Initialize initTraceLedger ===========');
         console.info('============= END : Initialize initTraceLedger ===========');
@@ -103,6 +104,31 @@ export class Trace extends Contract {
         return resp;
     }
 
+    public async createItemEventNaive(ctx: Context, clientCode: string, encLogic: string, startITN: string, endITN: string, eventJson: string): Promise<string> {
+        console.info('============= START : Create Item Event ===========');
+        const obj = this.convertToJson(eventJson);
+        obj[`docType`] = obj.docType || 'ITEM_EVENT';
+        obj[`startITN`] = startITN;
+        obj[`endITN`] = endITN;
+        let key = ctx.stub.createCompositeKey(clientCode+encLogic, [startITN, endITN]);
+        await ctx.stub.putState(key, Buffer.from(JSON.stringify(obj)));
+        console.info('============= END : Create Item Event ===========');
+        return eventJson;
+    }
+
+    public async queryHistoryByKeyRangeNaive(ctx: Context, startITN: string, endITN: string, docType: string): Promise<string> {
+        console.info('============= START : queryHistoryByKeyRange ===========',startITN+":::"+endITN);
+        if (!startITN || !docType) {
+            throw({err: 'queryHistoryByKeyRange startITN and DocType are required fields'});
+        }
+        const history = [];
+        const historyIt  = await ctx.stub.getStateByRange(startITN, endITN);
+        let resp =  await this.serializeData(history, historyIt);
+        resp = resp.filter((res) => res.docType === docType);
+        console.info('============= END : queryHistoryByKeyRange ===========');
+        return resp;
+    }
+
     public async createItemEvent(ctx: Context, clientCode: string, encLogic: string, startITN: string,
         endITN: string, eventJson: string): Promise<string> {
         console.info('============= START : Create Item Event ===========');
@@ -176,20 +202,19 @@ export class Trace extends Contract {
                     throw new Error(`${recordToSearch} ID does not exist `);
                 }
                 console.log(InfoAsBytes.toString());
-                const itnDetails: itn = JSON.parse(InfoAsBytes.toString());
+                const itnDetails: itn = JSON.parse(InfoAsBytes.toString('utf8'));
                 console.info('itnDetails.Doctype',itnDetails.EventJson);
                 eventJsonFound = itnDetails.EventJson;
+                console.info('itnDetails.Doctype',itnDetails.EventJson);
                // allRecords.push({ recordToSearch, itnDetails });
-               eventJsonData.push(eventJsonFound);
+               eventJsonData.push(itnDetails.EventJson);
             }
-         
         }
         if (eventJsonData.length == 0) {
             throw new Error(`Data for SearchITN : ${searchITN} does not exist `);
         }
         console.info('============= END : queryHistoryByKeyRange ===========');
-      //  return JSON.stringify(allRecords);
-        return eventJsonData.toString();
+        return JSON.stringify(eventJsonData);
     }
 
     private async serializeData(arr, obj: Iterators.HistoryQueryIterator | Iterators.StateQueryIterator) {
