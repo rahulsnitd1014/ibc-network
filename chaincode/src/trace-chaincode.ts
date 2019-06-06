@@ -106,6 +106,7 @@ export class Trace extends Contract {
     public async createItemEvent(ctx: Context, clientCode: string, encLogic: string, startITN: string,
                                  endITN: string, eventJson: string): Promise<string> {
         console.info('============= START : Create Item Event ===========');
+<<<<<<< HEAD
         var itnDetails = new itn;
 
         itnDetails.ClientCode = clientCode;
@@ -126,6 +127,18 @@ export class Trace extends Contract {
         await ctx.stub.putState(combinedkey, Buffer.from(JSON.stringify(itnDetails)));
         console.info("Putting State on ledger>newkey",combinedkey)
         
+=======
+        if (!startITN ||!endITN) {
+            throw({err: 'queryHistoryByKeyRange startITN and DocType are required fields'});
+        }
+        const obj = this.convertToJson(eventJson);
+        obj[`docType`] = obj.docType || 'ITEM_EVENT';
+        obj[`startITN`] = startITN;
+        obj[`endITN`] = endITN;
+
+        const key = ctx.stub.createCompositeKey(clientCode + encLogic, [startITN, endITN]);
+        await ctx.stub.putState(key, Buffer.from(JSON.stringify(obj)));
+>>>>>>> 1aedb5fd287f7f998b2f2f2a935df74b44ea20d0
         console.info('============= END : Create Item Event ===========');
         return eventJson;
     }
