@@ -142,41 +142,34 @@ export class Trace extends Contract {
             if (!searchITN) {
             throw({err: 'queryHistoryByKeyRange startITN and DocType are required fields'});
         }
-        const resp = [];
         const allRecords = [] ;
+        const iteratedRecords = [] ;
+
         let returnedClientCode, returnedEncType, returnedStartItn, returnedEndItn ;
 
         const clientResultsIterator = await ctx.stub.getStateByPartialCompositeKey("clientCode~encLogic~startITN~endITN",[clientCode])
+        let res =  await this.serializeData(iteratedRecords, clientResultsIterator);
+              console.info('====AllresultRecords==',iteratedRecords);
+    //    console.info('====clientResultsIterator==',clientResultsIterator);
         // Iterate through result set and for each record found
         let i ;
-	    for (i = 0; clientResultsIterator.next(); i++) {
-       // while (true) {
-        var responseRange = await clientResultsIterator.next();            
-            console.info('=====value======='+i+':'+responseRange.value.value.toString('utf8'));
-            const key = responseRange.value.key;
-            console.info('====KEY==',key);
-            let Record;
-                try {
-                    Record = JSON.parse(responseRange.value.value.toString('utf8'));
-                } catch (err) {
-                    console.log(err);
-                    Record = responseRange.value.value.toString('utf8');
-                }
-                resp.push({ key, Record });
-            const  compositeKeyParts = await ctx.stub.splitCompositeKey(resp[i].key);
-            console.info('======compositeKeyPartsObjectType======='+i+':'+compositeKeyParts.objectType);   
-            console.info('======compositeKeyPartsattributes======='+i+':'+compositeKeyParts.attributes);   
-            
-            returnedClientCode = compositeKeyParts.attributes[0];
-            returnedEncType = compositeKeyParts.attributes[1];
-            returnedStartItn = compositeKeyParts.attributes[2];
-            returnedEndItn = compositeKeyParts.attributes[3];
-		if ( searchITN >= returnedStartItn  && searchITN <= returnedEndItn) {
+	    for (i = 0; i< iteratedRecords.length; i++) {
+            console.info('====resultRecords[i]==',iteratedRecords[i]);
+      
+            returnedClientCode = iteratedRecords[i].ClientCode;
+            returnedEncType = iteratedRecords[i].EncLogic;
+            returnedStartItn = iteratedRecords[i].StartITN;
+            returnedEndItn = iteratedRecords[i].EndITN;
+            console.info('====searchITN[i]==',searchITN);
+            console.info('====returnedStartItn[i]==',returnedStartItn);
+            console.info('====returnedEndItn[i]==',returnedEndItn);
+
+		if ( (searchITN >= returnedStartItn)&&(searchITN <= returnedEndItn)) {
             console.info("- found a record from client:%s EncType:%s StartItn:%s EndItn:%s\n", returnedClientCode, returnedEncType, returnedStartItn, returnedEndItn);
 
             const recordToSearch =  returnedClientCode+returnedEncType+returnedStartItn+returnedEndItn;
             const InfoAsBytes = await ctx.stub.getState(recordToSearch); // get the po from chaincode state
-         if (!InfoAsBytes || InfoAsBytes.length === 0) {
+         if (!InfoAsBytes || InfoAsBytes.length == 0) {
             throw new Error(`${recordToSearch} ID does not exist `);
          }
             console.log(InfoAsBytes.toString());
@@ -184,11 +177,10 @@ export class Trace extends Contract {
                 console.info('itnDetails',itnDetails);
                 console.info('itnDetails.Doctype',itnDetails.docType);
                 allRecords.push({recordToSearch , itnDetails});
-        }       
-        console.info('============= END : queryHistoryByKeyRange ===========',allRecords);
-        return JSON.stringify(allRecords);
+        }   
     }
- 
+    console.info('============= END : queryHistoryByKeyRange ===========',allRecords);
+    return JSON.stringify(allRecords);   
 }
 
     private async serializeData(arr, obj: Iterators.HistoryQueryIterator | Iterators.StateQueryIterator) {
