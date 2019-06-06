@@ -187,6 +187,8 @@ chaincodeQuery() {
     echo "Attempting to Query peer${PEER}.org${ORG} ...$(($(date +%s) - starttime)) secs"
     set -x
     peer chaincode query -C $CHANNEL_NAME -n mycc -c '{"Args":[]}' >&log.txt
+   # peer chaincode query -C $CHANNEL_NAME -n mycc -c '{"Args":["createItemEvent", "123", "4", "12", "20", "{}"]}' >&log.txt
+  #  peer chaincode invoke -o orderer.example.com:7050 --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME -n mycc $PEER_CONN_PARMS -c '{"Args":["createItemEvent", "123", "4", "12", "20", "{}"]}' >&log.txt
     res=$?
     set +x
     test $res -eq 0 && VALUE=$(cat log.txt | awk '/Query Result/ {print $NF}')
@@ -310,7 +312,18 @@ chaincodeInvoke() {
     set +x
   else
     set -x
+    
+	  peer chaincode invoke -o orderer.example.com:7050 --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME -n mycc $PEER_CONN_PARMS -c '{"Args":["createItemEvent", "123", "4", "15", "20", "{}"]}' >&log.txt
+#peer chaincode invoke -o orderer.example.com:7050 --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME -n mycc $PEER_CONN_PARMS -c '{"Args":["createItemEvent", "123", "4", "11", "25", "{}"]}' >&log.txt
     peer chaincode invoke -o orderer.example.com:7050 --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME -n mycc $PEER_CONN_PARMS -c '{"Args":["createItemEvent", "123", "4", "10", "20", "{}"]}' >&log.txt
+
+    
+    peer chaincode invoke -o orderer.example.com:7050 --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME -n mycc $PEER_CONN_PARMS -c '{"Args":["createItemEvent", "125", "4", "8", "18", "{}"]}' >&log.txt
+    peer chaincode invoke -o orderer.example.com:7050 --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME -n mycc $PEER_CONN_PARMS -c '{"Args":["createItemEvent", "123", "4", "5", "10", "{}"]}' >&log.txt
+
+    #peer chaincode invoke -o orderer.example.com:7050 --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME -n mycc $PEER_CONN_PARMS -c '{"Args":["createItemEvent", "123", "4", "50", "60", "{}"]}' >&log.txt
+    #sleep 10
+    #peer chaincode invoke -o orderer.example.com:7050 --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME -n mycc $PEER_CONN_PARMS -c '{"Args":["queryHistoryByKeyRange", "123","4","12","{}"]}' >&log.txt
     res=$?
     set +x
   fi

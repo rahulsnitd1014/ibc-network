@@ -4,7 +4,9 @@
 
 import { Context, Contract } from 'fabric-contract-api';
 import { Iterators } from 'fabric-shim';
+
 import { asn } from './asn';
+import { itn } from './asn';
 import { AdvanceShipNotice } from './asn';
 
 export class Trace extends Contract {
@@ -90,7 +92,7 @@ export class Trace extends Contract {
 
     public async queryHistoryByKey(ctx: Context, key: string, docType: string): Promise<string> {
         console.info('============= START : Get History By Key ===========');
-        if (!key || !docType) {
+        if (!key || !docType    ) {
             throw({err: 'Key and DocType are required fields'});
         }
         const history = [];
@@ -104,27 +106,84 @@ export class Trace extends Contract {
     public async createItemEvent(ctx: Context, clientCode: string, encLogic: string, startITN: string,
                                  endITN: string, eventJson: string): Promise<string> {
         console.info('============= START : Create Item Event ===========');
+        var itnDetails = new itn;
+
+        itnDetails.ClientCode = clientCode;
+        itnDetails.EncLogic = encLogic;
+        itnDetails.StartITN = startITN
+        itnDetails.EndITN = endITN
         const obj = this.convertToJson(eventJson);
-        obj[`docType`] = obj.docType || 'ITEM_EVENT';
-        const key = ctx.stub.createCompositeKey(clientCode + encLogic, [startITN, endITN]);
-        await ctx.stub.putState(key, Buffer.from(JSON.stringify(obj)));
+        itnDetails.docType = obj.docType || 'ITEM_EVENT';
+        const indexName = "clientCode~encLogic~startITN~endITN"
+
+        const key = ctx.stub.createCompositeKey(indexName, [clientCode,encLogic,startITN,endITN]);
+        console.info("Putting State on ledger: Key is:",key);
+
+        await ctx.stub.putState(key, Buffer.from(JSON.stringify(itnDetails)));
+
+         //Putting Data on the basis of vendorDetails
+        var combinedkey = clientCode+encLogic+startITN+endITN ;
+        await ctx.stub.putState(combinedkey, Buffer.from(JSON.stringify(itnDetails)));
+        console.info("Putting State on ledger>newkey",combinedkey)
+        
         console.info('============= END : Create Item Event ===========');
         return eventJson;
     }
 
-    public async queryHistoryByKeyRange(ctx: Context, startITN: string, endITN: string,
+    public async queryHistoryByKeyRange(ctx: Context, clientCode: string,encLogic: string, searchITN: string,
                                         docType: string): Promise<string> {
         console.info('============= START : queryHistoryByKeyRange ===========');
-        if (!startITN || !docType) {
+            if (!searchITN) {
             throw({err: 'queryHistoryByKeyRange startITN and DocType are required fields'});
         }
-        const history = [];
-        const historyIt  = await ctx.stub.getStateByRange(startITN, endITN);
-        let resp =  await this.serializeData(history, historyIt);
-        resp = resp.filter((res) => res.docType === docType);
-        console.info('============= END : queryHistoryByKeyRange ===========');
-        return resp;
+        const resp = [];
+        const allRecords = [] ;
+        let returnedClientCode, returnedEncType, returnedStartItn, returnedEndItn ;
+
+        const clientResultsIterator = await ctx.stub.getStateByPartialCompositeKey("clientCode~encLogic~startITN~endITN",[clientCode])
+        // Iterate through result set and for each record found
+        let i ;
+	    for (i = 0; clientResultsIterator.next(); i++) {
+       // while (true) {
+        var responseRange = await clientResultsIterator.next();            
+            console.info('=====value======='+i+':'+responseRange.value.value.toString('utf8'));
+            const key = responseRange.value.key;
+            console.info('====KEY==',key);
+            let Record;
+                try {
+                    Record = JSON.parse(responseRange.value.value.toString('utf8'));
+                } catch (err) {
+                    console.log(err);
+                    Record = responseRange.value.value.toString('utf8');
+                }
+                resp.push({ key, Record });
+            const  compositeKeyParts = await ctx.stub.splitCompositeKey(resp[i].key);
+            console.info('======compositeKeyPartsObjectType======='+i+':'+compositeKeyParts.objectType);   
+            console.info('======compositeKeyPartsattributes======='+i+':'+compositeKeyParts.attributes);   
+            
+            returnedClientCode = compositeKeyParts.attributes[0];
+            returnedEncType = compositeKeyParts.attributes[1];
+            returnedStartItn = compositeKeyParts.attributes[2];
+            returnedEndItn = compositeKeyParts.attributes[3];
+		if ( searchITN >= returnedStartItn  && searchITN <= returnedEndItn) {
+            console.info("- found a record from client:%s EncType:%s StartItn:%s EndItn:%s\n", returnedClientCode, returnedEncType, returnedStartItn, returnedEndItn);
+
+            const recordToSearch =  returnedClientCode+returnedEncType+returnedStartItn+returnedEndItn;
+            const InfoAsBytes = await ctx.stub.getState(recordToSearch); // get the po from chaincode state
+         if (!InfoAsBytes || InfoAsBytes.length === 0) {
+            throw new Error(`${recordToSearch} ID does not exist `);
+         }
+            console.log(InfoAsBytes.toString());
+            const itnDetails: itn = JSON.parse(InfoAsBytes.toString());
+                console.info('itnDetails',itnDetails);
+                console.info('itnDetails.Doctype',itnDetails.docType);
+                allRecords.push({recordToSearch , itnDetails});
+        }       
+        console.info('============= END : queryHistoryByKeyRange ===========',allRecords);
+        return JSON.stringify(allRecords);
     }
+ 
+}
 
     private async serializeData(arr, obj: Iterators.HistoryQueryIterator | Iterators.StateQueryIterator) {
         let flag = true;

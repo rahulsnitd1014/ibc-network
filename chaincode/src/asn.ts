@@ -5,6 +5,15 @@ export class asn {
     public asnJson: string;
     public advanceShipNotice: AdvanceShipNotice;
 }
+export class itn {
+    public docType?: string;
+    public ClientCode: string;
+    public EncLogic: string;
+    public StartITN: string;
+    public EndITN: string;
+	
+}
+
 
 interface FileHeader {
     ISASenderID: string;
