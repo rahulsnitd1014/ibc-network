@@ -11,8 +11,8 @@ import { AdvanceShipNotice } from './asn';
 
 export class Trace extends Contract {
 
-    public  operators: string[] = ['EQ', 'GT', 'GTE', 'LT', 'LTE', 'NE'];
-    public  operatorsMapping: string[] = ['$eq', '$gt', '$gte', '$lt', '$lte', '$ne'];
+    public operators: string[] = ['EQ', 'GT', 'GTE', 'LT', 'LTE', 'NE'];
+    public operatorsMapping: string[] = ['$eq', '$gt', '$gte', '$lt', '$lte', '$ne'];
     public explicitOpertors: string[] = ['OR', 'AND', 'NOR', 'NOT'];
     public explicitOpertorsMapping: string[] = ['$or', '$and', '$nor', '$not'];
     public async initTraceLedger(ctx: Context) {
@@ -42,8 +42,8 @@ export class Trace extends Contract {
     public async POHistory(ctx: Context, poNumber: string): Promise<string> {
         console.info('============= START : Get PO History ===========');
         const history = [];
-        const historyIt  = await ctx.stub.getHistoryForKey(poNumber);
-        const resp =  await this.serializeData(history, historyIt);
+        const historyIt = await ctx.stub.getHistoryForKey(poNumber);
+        const resp = await this.serializeData(history, historyIt);
         console.info('============= END : Get PO History ===========');
         return resp;
     }
@@ -92,22 +92,22 @@ export class Trace extends Contract {
 
     public async queryHistoryByKey(ctx: Context, key: string, docType: string): Promise<string> {
         console.info('============= START : Get History By Key ===========');
-        if (!key || !docType    ) {
-            throw({err: 'Key and DocType are required fields'});
+        if (!key || !docType) {
+            throw ({ err: 'Key and DocType are required fields' });
         }
         const history = [];
-        const historyIt  = await ctx.stub.getHistoryForKey(key);
-        let resp =  await this.serializeData(history, historyIt);
+        const historyIt = await ctx.stub.getHistoryForKey(key);
+        let resp = await this.serializeData(history, historyIt);
         resp = resp.filter((res) => res.docType === docType);
         console.info('============= END : Get History By Key ===========');
         return resp;
     }
 
     public async createItemEvent(ctx: Context, clientCode: string, encLogic: string, startITN: string,
-                                 endITN: string, eventJson: string): Promise<string> {
+        endITN: string, eventJson: string): Promise<string> {
         console.info('============= START : Create Item Event ===========');
-        if (!startITN ||!endITN) {
-            throw({err: 'queryHistoryByKeyRange startITN and DocType are required fields'});
+        if (!startITN || !endITN) {
+            throw ({ err: 'queryHistoryByKeyRange startITN and DocType are required fields' });
         }
         var itnDetails = new itn;
 
@@ -122,66 +122,70 @@ export class Trace extends Contract {
         itnDetails.docType = obj.docType || 'ITEM_EVENT';
         const indexName = "clientCode~encLogic~startITN~endITN"
 
-        const key = ctx.stub.createCompositeKey(indexName, [clientCode,encLogic,startITN,endITN]);
-        console.info("Putting State on ledger: Key is:",key);
+        const key = ctx.stub.createCompositeKey(indexName, [clientCode, encLogic, startITN, endITN]);
+        console.info("Putting State on ledger: Key is:", key);
 
         await ctx.stub.putState(key, Buffer.from(JSON.stringify(itnDetails)));
 
-         //Putting Data on the basis of vendorDetails
-        var combinedkey = clientCode+encLogic+startITN+endITN ;
+        //Putting Data on the basis of vendorDetails
+        var combinedkey = clientCode + encLogic + startITN + endITN;
         await ctx.stub.putState(combinedkey, Buffer.from(JSON.stringify(itnDetails)));
-        console.info("Putting State on ledger>newkey",combinedkey)
+        console.info("Putting State on ledger>newkey", combinedkey)
         // await ctx.stub.putState(key, Buffer.from(JSON.stringify(obj)));
         console.info('============= END : Create Item Event ===========');
         return eventJson;
     }
 
-    public async queryHistoryByKeyRange(ctx: Context, clientCode: string,encLogic: string, searchITN: string,
-                                        docType: string): Promise<string> {
+    public async queryHistoryByKeyRange(ctx: Context, clientCode: string, encLogic: string, searchITN: string,
+        docType: string): Promise<string> {
         console.info('============= START : queryHistoryByKeyRange ===========');
-            if (!searchITN) {
-            throw({err: 'queryHistoryByKeyRange startITN and DocType are required fields'});
+        if (!searchITN) {
+            throw ({ err: 'queryHistoryByKeyRange startITN is required field' });
         }
-        const allRecords = [] ;
-        const iteratedRecords = [] ;
+        const allRecords = [];
+        const iteratedRecords = [];
+        var recordToSearch;
 
-        let returnedClientCode, returnedEncType, returnedStartItn, returnedEndItn ;
+        let returnedClientCode, returnedEncType, returnedStartItn, returnedEndItn, searchITNo;
+        const clientResultsIterator = await ctx.stub.getStateByPartialCompositeKey("clientCode~encLogic~startITN~endITN", [clientCode])
 
-        const clientResultsIterator = await ctx.stub.getStateByPartialCompositeKey("clientCode~encLogic~startITN~endITN",[clientCode])
-        let res =  await this.serializeData(iteratedRecords, clientResultsIterator);
-              console.info('====AllresultRecords==',iteratedRecords);
-    //    console.info('====clientResultsIterator==',clientResultsIterator);
-        // Iterate through result set and for each record found
-        let i ;
-	    for (i = 0; i< iteratedRecords.length; i++) {
-            console.info('====resultRecords[i]==',iteratedRecords[i]);
-      
+        let res = await this.serializeData(iteratedRecords, clientResultsIterator);
+        if (iteratedRecords.length == 0) {
+            throw new Error(`Data for ClientCode : ${clientCode} does not exist `);
+        }
+
+        // Iterate through result set(iteratedRecords) and for each record found add to allRecords[]
+        let i;
+        for (i = 0; i <iteratedRecords.length; i++) {
             returnedClientCode = iteratedRecords[i].ClientCode;
             returnedEncType = iteratedRecords[i].EncLogic;
             returnedStartItn = iteratedRecords[i].StartITN;
             returnedEndItn = iteratedRecords[i].EndITN;
-            console.info('====searchITN[i]==',searchITN);
-            console.info('====returnedStartItn[i]==',returnedStartItn);
-            console.info('====returnedEndItn[i]==',returnedEndItn);
+            searchITNo = parseInt(searchITN);
+            // console.info('====searchITN[i]==',searchITNo);
+            // console.info('====returnedStartItn[i]==',returnedStartItn);
+            // console.info('====returnedEndItn[i]==',returnedEndItn);
 
-		if ( (searchITN >= returnedStartItn)&&(searchITN <= returnedEndItn)) {
-            console.info("- found a record from client:%s EncType:%s StartItn:%s EndItn:%s\n", returnedClientCode, returnedEncType, returnedStartItn, returnedEndItn);
-
-            const recordToSearch =  returnedClientCode+returnedEncType+returnedStartItn+returnedEndItn;
-            const InfoAsBytes = await ctx.stub.getState(recordToSearch); // get the po from chaincode state
-         if (!InfoAsBytes || InfoAsBytes.length == 0) {
-            throw new Error(`${recordToSearch} ID does not exist `);
-         }
-            console.log(InfoAsBytes.toString());
-            const itnDetails: itn = JSON.parse(InfoAsBytes.toString());
-                console.info('itnDetails',itnDetails);
-                console.info('itnDetails.Doctype',itnDetails.docType);
-                allRecords.push({recordToSearch , itnDetails});
-        }   
+            if ((searchITNo >= parseInt(returnedStartItn)) && (searchITNo <= parseInt(returnedEndItn))) {
+                console.info("- found a record from client:%s EncType:%s StartItn:%s EndItn:%s\n", returnedClientCode, returnedEncType, returnedStartItn, returnedEndItn);
+                recordToSearch = returnedClientCode + returnedEncType + returnedStartItn + returnedEndItn;
+                const InfoAsBytes = await ctx.stub.getState(recordToSearch); // get the po from chaincode state
+                if (!InfoAsBytes || InfoAsBytes.length == 0) {
+                    throw new Error(`${recordToSearch} ID does not exist `);
+                }
+                console.log(InfoAsBytes.toString());
+                const itnDetails: itn = JSON.parse(InfoAsBytes.toString());
+                // console.info('itnDetails.Doctype',itnDetails.docType);
+                allRecords.push({ recordToSearch, itnDetails });
+            }
+         
+        }
+        if (allRecords.length == 0) {
+            throw new Error(`Data for SearchITN : ${searchITN} does not exist `);
+        }
+        console.info('============= END : queryHistoryByKeyRange ===========');
+        return JSON.stringify(allRecords);
     }
-    console.info('============= END : queryHistoryByKeyRange ===========',allRecords);
-    return JSON.stringify(allRecords);   
-}
 
     private async serializeData(arr, obj: Iterators.HistoryQueryIterator | Iterators.StateQueryIterator) {
         let flag = true;
@@ -216,12 +220,12 @@ export class Trace extends Contract {
                 }
             });
             if (!operator) {
-                throw({err: 'Supported Operators are:: EQ, GT, GTE, LT, LTE, NE'});
+                throw ({ err: 'Supported Operators are:: EQ, GT, GTE, LT, LTE, NE' });
                 return;
             }
             tmp = prm.split(operator);
             if (tmp.length < 2) {
-                throw({err: 'Invalid search parameters'});
+                throw ({ err: 'Invalid search parameters' });
                 return;
             }
             tmp = [tmp[0], operator, tmp[1]];
@@ -240,7 +244,7 @@ export class Trace extends Contract {
             this.embedNestedObj(tmp, paramName, operator, val);
         });
         const explicitOp = this.explicitOpertorsMapping[this.explicitOpertors.indexOf(type)];
-        const tmpObj = {selector: {}};
+        const tmpObj = { selector: {} };
         tmpObj.selector[`${explicitOp}`] = this.putObjInArr(tmp);
         return JSON.stringify(tmpObj);
     }
@@ -253,17 +257,17 @@ export class Trace extends Contract {
         if (nestedParams.length === 1) {
             const actualOp = this.operatorsMapping[this.operators.indexOf(operator)];
             obj[nestedParams[0]] = {};
-            obj[nestedParams[0]][actualOp] =  value;
+            obj[nestedParams[0]][actualOp] = value;
             return;
         }
         this.embedNestedObj(obj[nestedParams[0]], nestedParams.splice(1, nestedParams.length).join('.')
-        , operator, value);
+            , operator, value);
     }
 
     private putObjInArr(obj) {
         const keys = Object.keys(obj);
         const arr = [];
-        for ( const key of keys) {
+        for (const key of keys) {
             const tmp = {};
             tmp[`${key}`] = obj[key];
             arr.push(tmp);
@@ -276,7 +280,7 @@ export class Trace extends Contract {
         try {
             obj = JSON.parse(strJson);
         } catch (e) {
-            throw({errMsg: 'Invalid JSON Object', err: e});
+            throw ({ errMsg: 'Invalid JSON Object', err: e });
             return;
         }
         return obj;
