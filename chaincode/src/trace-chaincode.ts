@@ -113,13 +113,14 @@ export class Trace extends Contract {
 
         itnDetails.ClientCode = clientCode;
         itnDetails.EncLogic = encLogic;
-        itnDetails.StartITN = startITN
-        itnDetails.EndITN = endITN
-        const obj = this.convertToJson(eventJson);
-        obj[`docType`] = obj.docType || 'ITEM_EVENT';
-        obj[`startITN`] = startITN;
-        obj[`endITN`] = endITN;
-        itnDetails.docType = obj.docType || 'ITEM_EVENT';
+        itnDetails.StartITN = startITN;
+        itnDetails.EndITN = endITN;
+        itnDetails.EventJson = eventJson;
+       // const obj = this.convertToJson(eventJson);
+        //obj[`docType`] = obj.docType || 'ITEM_EVENT';
+        //obj[`startITN`] = startITN;
+        //obj[`endITN`] = endITN;
+        //itnDetails.docType = obj.docType || 'ITEM_EVENT';
         const indexName = "clientCode~encLogic~startITN~endITN"
 
         const key = ctx.stub.createCompositeKey(indexName, [clientCode, encLogic, startITN, endITN]);
@@ -142,9 +143,10 @@ export class Trace extends Contract {
         if (!searchITN) {
             throw ({ err: 'queryHistoryByKeyRange startITN is required field' });
         }
-        const allRecords = [];
+       // const allRecords = [];
         const iteratedRecords = [];
-        var recordToSearch;
+        var recordToSearch , eventJsonFound;  
+        const eventJsonData = [] ;
 
         let returnedClientCode, returnedEncType, returnedStartItn, returnedEndItn, searchITNo;
         const clientResultsIterator = await ctx.stub.getStateByPartialCompositeKey("clientCode~encLogic~startITN~endITN", [clientCode])
@@ -153,7 +155,7 @@ export class Trace extends Contract {
         if (iteratedRecords.length == 0) {
             throw new Error(`Data for ClientCode : ${clientCode} does not exist `);
         }
-
+        console.info('====iteratedRecords==',iteratedRecords);
         // Iterate through result set(iteratedRecords) and for each record found add to allRecords[]
         let i;
         for (i = 0; i <iteratedRecords.length; i++) {
@@ -175,16 +177,19 @@ export class Trace extends Contract {
                 }
                 console.log(InfoAsBytes.toString());
                 const itnDetails: itn = JSON.parse(InfoAsBytes.toString());
-                // console.info('itnDetails.Doctype',itnDetails.docType);
-                allRecords.push({ recordToSearch, itnDetails });
+                console.info('itnDetails.Doctype',itnDetails.EventJson);
+                eventJsonFound = itnDetails.EventJson;
+               // allRecords.push({ recordToSearch, itnDetails });
+               eventJsonData.push(eventJsonFound);
             }
          
         }
-        if (allRecords.length == 0) {
+        if (eventJsonData.length == 0) {
             throw new Error(`Data for SearchITN : ${searchITN} does not exist `);
         }
         console.info('============= END : queryHistoryByKeyRange ===========');
-        return JSON.stringify(allRecords);
+      //  return JSON.stringify(allRecords);
+        return eventJsonData.toString();
     }
 
     private async serializeData(arr, obj: Iterators.HistoryQueryIterator | Iterators.StateQueryIterator) {

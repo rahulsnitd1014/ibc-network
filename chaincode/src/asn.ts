@@ -11,6 +11,7 @@ export class itn {
     public EncLogic: string;
     public StartITN: string;
     public EndITN: string;
+    public EventJson: string;
 	
 }
 
