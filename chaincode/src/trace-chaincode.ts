@@ -142,7 +142,7 @@ export class Trace extends Contract {
         itnDetails.StartITN = startITN;
         itnDetails.EndITN = endITN;
         itnDetails.EventJson = eventJson;
-       // const obj = this.convertToJson(eventJson);
+        // const obj = this.convertToJson(eventJson);
         //obj[`docType`] = obj.docType || 'ITEM_EVENT';
         //obj[`startITN`] = startITN;
         //obj[`endITN`] = endITN;
@@ -158,7 +158,7 @@ export class Trace extends Contract {
         var combinedkey = clientCode + encLogic + startITN + endITN;
         await ctx.stub.putState(combinedkey, Buffer.from(JSON.stringify(itnDetails)));
         console.info("Putting State on ledger>newkey", combinedkey)
-        // await ctx.stub.putState(key, Buffer.from(JSON.stringify(obj)));
+
         console.info('============= END : Create Item Event ===========');
         return eventJson;
     }
@@ -169,10 +169,9 @@ export class Trace extends Contract {
         if (!searchITN) {
             throw ({ err: 'queryHistoryByKeyRange startITN is required field' });
         }
-       // const allRecords = [];
         const iteratedRecords = [];
-        var recordToSearch , eventJsonFound;  
-        const eventJsonData = [] ;
+        var recordToSearch, eventJsonFound;
+        const eventJsonData = [];
 
         let returnedClientCode, returnedEncType, returnedStartItn, returnedEndItn, searchITNo;
         const clientResultsIterator = await ctx.stub.getStateByPartialCompositeKey("clientCode~encLogic~startITN~endITN", [clientCode])
@@ -181,18 +180,15 @@ export class Trace extends Contract {
         if (iteratedRecords.length == 0) {
             throw new Error(`Data for ClientCode : ${clientCode} does not exist `);
         }
-        console.info('====iteratedRecords==',iteratedRecords);
+        // console.info('====iteratedRecords==',iteratedRecords);
         // Iterate through result set(iteratedRecords) and for each record found add to allRecords[]
         let i;
-        for (i = 0; i <iteratedRecords.length; i++) {
+        for (i = 0; i < iteratedRecords.length; i++) {
             returnedClientCode = iteratedRecords[i].ClientCode;
             returnedEncType = iteratedRecords[i].EncLogic;
             returnedStartItn = iteratedRecords[i].StartITN;
             returnedEndItn = iteratedRecords[i].EndITN;
             searchITNo = parseInt(searchITN);
-            // console.info('====searchITN[i]==',searchITNo);
-            // console.info('====returnedStartItn[i]==',returnedStartItn);
-            // console.info('====returnedEndItn[i]==',returnedEndItn);
 
             if ((searchITNo >= parseInt(returnedStartItn)) && (searchITNo <= parseInt(returnedEndItn))) {
                 console.info("- found a record from client:%s EncType:%s StartItn:%s EndItn:%s\n", returnedClientCode, returnedEncType, returnedStartItn, returnedEndItn);
@@ -202,19 +198,22 @@ export class Trace extends Contract {
                     throw new Error(`${recordToSearch} ID does not exist `);
                 }
                 console.log(InfoAsBytes.toString());
-                const itnDetails: itn = JSON.parse(InfoAsBytes.toString('utf8'));
-                console.info('itnDetails.Doctype',itnDetails.EventJson);
+                const itnDetails: itn = JSON.parse(InfoAsBytes.toString());
+                console.info('itnDetails.Doctype', itnDetails.EventJson);
                 eventJsonFound = itnDetails.EventJson;
-                console.info('itnDetails.Doctype',itnDetails.EventJson);
-               // allRecords.push({ recordToSearch, itnDetails });
-               eventJsonData.push(itnDetails.EventJson);
+                eventJsonData.push(eventJsonFound);
             }
+
         }
         if (eventJsonData.length == 0) {
             throw new Error(`Data for SearchITN : ${searchITN} does not exist `);
         }
+
+        const resultData = JSON.stringify(eventJsonData);
+        //  console.info('=====resultData.Parse()=======',JSON.parse(resultData));
         console.info('============= END : queryHistoryByKeyRange ===========');
-        return JSON.stringify(eventJsonData);
+        return JSON.parse(resultData);
+
     }
 
     private async serializeData(arr, obj: Iterators.HistoryQueryIterator | Iterators.StateQueryIterator) {
