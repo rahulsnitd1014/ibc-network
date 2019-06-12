@@ -179,8 +179,8 @@ export class Trace extends Contract {
 
                 const itnDetails: itn = JSON.parse(InfoAsBytes.toString());
                 console.info('itnDetails.Doctype', itnDetails.EventJson);
-              //  eventJsonFound = itnDetails.EventJson;
-                eventJsonData.push(itnDetails);
+                eventJsonFound = itnDetails.EventJson;
+                eventJsonData.push(eventJsonFound);
             }
 
         }
