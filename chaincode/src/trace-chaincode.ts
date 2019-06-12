@@ -319,6 +319,7 @@ export class Trace extends Contract {
         }
         return obj;
     }
+    
 
     // OBJECT ARRAY are supported
     // private dataType(data) {
