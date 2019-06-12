@@ -198,6 +198,11 @@ export class Trace extends Contract {
                     throw new Error(`${recordToSearch} ID does not exist `);
                 }
                 console.log(InfoAsBytes.toString());
+                // const itnDetails: itn = JSON.parse(InfoAsBytes.toString());
+                // console.info('itnDetails.Doctype', itnDetails.EventJson);
+                // eventJsonFound = itnDetails.EventJson;
+                // eventJsonData.push(eventJsonFound);
+
                 const itnDetails: itn = JSON.parse(InfoAsBytes.toString());
                 console.info('itnDetails.Doctype', itnDetails.EventJson);
                 eventJsonFound = itnDetails.EventJson;
@@ -208,9 +213,9 @@ export class Trace extends Contract {
         if (eventJsonData.length == 0) {
             throw new Error(`Data for SearchITN : ${searchITN} does not exist `);
         }
-
+        
         const resultData = JSON.stringify(eventJsonData);
-        //  console.info('=====resultData.Parse()=======',JSON.parse(resultData));
+        
         console.info('============= END : queryHistoryByKeyRange ===========');
         return JSON.parse(resultData);
 

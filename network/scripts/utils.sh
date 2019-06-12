@@ -124,7 +124,7 @@ installChaincode() {
   set +x
   cat log.txt
   verifyResult $res "Chaincode installation on peer${PEER}.org${ORG} has failed"
-  echo "===================== Chaincode is installed on peer${PEER}.org${ORG} ===================== "
+  echo "===================== Chaincode is installed on peer${PEER}.org${ORG} at : ${CC_SRC_PATH}===================== "
   echo
 }
 
