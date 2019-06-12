@@ -87,7 +87,7 @@ export class Trace extends Contract {
         const queryData = [];
         const queryIt: Iterators.StateQueryIterator = await ctx.stub.getQueryResult(queryStr);
         const resp = await this.serializeData(queryData, queryIt);
-        console.info('============= END : Genric Query DB ===========');
+        console.info('============= END : Genric Query DB ===========resp************************', JSON.stringify(resp));
         return resp;
     }
 
@@ -100,17 +100,21 @@ export class Trace extends Contract {
         const historyIt = await ctx.stub.getHistoryForKey(key);
         let resp = await this.serializeData(history, historyIt);
         resp = resp.filter((res) => res.docType === docType);
-        console.info('============= END : Get History By Key ===========');
+        console.info('============= END : Get History By Key ===========resp::'+JSON.stringify(resp));
         return resp;
     }
 
-    public async createItemEventNaive(ctx: Context, clientCode: string, encLogic: string, startITN: string, endITN: string, eventJson: string): Promise<string> {
+    public async createItemEvent(ctx: Context, clientCode: string, encLogic: string, startITN: string, endITN: string, eventJson: string): Promise<string> {
         console.info('============= START : Create Item Event ===========');
         const obj = this.convertToJson(eventJson);
         obj[`docType`] = obj.docType || 'ITEM_EVENT';
         obj[`startITN`] = startITN;
         obj[`endITN`] = endITN;
-        let key = ctx.stub.createCompositeKey(clientCode+encLogic, [startITN, endITN]);
+        obj[`clientCode`] = clientCode;
+        obj[`encLogic`] = encLogic;
+       
+        const indexName = "clientCode~encLogic~startITN~endITN";
+        const key = ctx.stub.createCompositeKey(indexName, [clientCode, encLogic, startITN, endITN]);
         await ctx.stub.putState(key, Buffer.from(JSON.stringify(obj)));
         console.info('============= END : Create Item Event ===========');
         return eventJson;
@@ -129,7 +133,7 @@ export class Trace extends Contract {
         return resp;
     }
 
-    public async createItemEvent(ctx: Context, clientCode: string, encLogic: string, startITN: string,
+    public async createItemEventNaive(ctx: Context, clientCode: string, encLogic: string, startITN: string,
         endITN: string, eventJson: string): Promise<string> {
         console.info('============= START : Create Item Event ===========');
         if (!startITN || !endITN) {
@@ -171,10 +175,10 @@ export class Trace extends Contract {
         }
         const iteratedRecords = [];
         var recordToSearch, eventJsonFound;
-        const eventJsonData = [];
+        let eventJsonData : any = [];
 
         let returnedClientCode, returnedEncType, returnedStartItn, returnedEndItn, searchITNo;
-        const clientResultsIterator = await ctx.stub.getStateByPartialCompositeKey("clientCode~encLogic~startITN~endITN", [clientCode])
+        const clientResultsIterator = await ctx.stub.getStateByPartialCompositeKey("clientCode~encLogic~startITN~endITN", [clientCode, encLogic])
 
         let res = await this.serializeData(iteratedRecords, clientResultsIterator);
         if (iteratedRecords.length == 0) {
@@ -184,41 +188,26 @@ export class Trace extends Contract {
         // Iterate through result set(iteratedRecords) and for each record found add to allRecords[]
         let i;
         for (i = 0; i < iteratedRecords.length; i++) {
-            returnedClientCode = iteratedRecords[i].ClientCode;
-            returnedEncType = iteratedRecords[i].EncLogic;
-            returnedStartItn = iteratedRecords[i].StartITN;
-            returnedEndItn = iteratedRecords[i].EndITN;
+            returnedClientCode = iteratedRecords[i].clientCode;
+            returnedEncType = iteratedRecords[i].encLogic;
+            returnedStartItn = iteratedRecords[i].startITN;
+            returnedEndItn = iteratedRecords[i].endITN;
             searchITNo = parseInt(searchITN);
 
             if ((searchITNo >= parseInt(returnedStartItn)) && (searchITNo <= parseInt(returnedEndItn))) {
                 console.info("- found a record from client:%s EncType:%s StartItn:%s EndItn:%s\n", returnedClientCode, returnedEncType, returnedStartItn, returnedEndItn);
-                recordToSearch = returnedClientCode + returnedEncType + returnedStartItn + returnedEndItn;
-                const InfoAsBytes = await ctx.stub.getState(recordToSearch); // get the po from chaincode state
-                if (!InfoAsBytes || InfoAsBytes.length == 0) {
-                    throw new Error(`${recordToSearch} ID does not exist `);
-                }
-                console.log(InfoAsBytes.toString());
-                // const itnDetails: itn = JSON.parse(InfoAsBytes.toString());
-                // console.info('itnDetails.Doctype', itnDetails.EventJson);
-                // eventJsonFound = itnDetails.EventJson;
-                // eventJsonData.push(eventJsonFound);
-
-                const itnDetails: itn = JSON.parse(InfoAsBytes.toString());
-                console.info('itnDetails.Doctype', itnDetails.EventJson);
-                eventJsonFound = itnDetails.EventJson;
-                eventJsonData.push(eventJsonFound);
+                const indexName = "clientCode~encLogic~startITN~endITN";
+                const recordToSearch = ctx.stub.createCompositeKey(indexName, [clientCode, encLogic, returnedStartItn, returnedEndItn]);
+                console.info('============= queryHistoryByKeyRange recordToSearch::', recordToSearch);
+                await eventJsonData.push(... await this.queryHistoryByKey(ctx, recordToSearch, docType));
             }
 
         }
+        console.info('============= END : queryHistoryByKeyRange ===========eventJsonData::', JSON.stringify(eventJsonData));
         if (eventJsonData.length == 0) {
-            throw new Error(`Data for SearchITN : ${searchITN} does not exist `);
-        }
-        
-        const resultData = JSON.stringify(eventJsonData);
-        
-        console.info('============= END : queryHistoryByKeyRange ===========');
-        return JSON.parse(resultData);
-
+            throw new Error(`Data for SearchITN : ${clientCode} ${encLogic} ${searchITN} does not exist `);
+        }        
+        return eventJsonData;
     }
 
     private async serializeData(arr, obj: Iterators.HistoryQueryIterator | Iterators.StateQueryIterator) {
