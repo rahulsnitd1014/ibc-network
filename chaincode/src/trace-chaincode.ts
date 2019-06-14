@@ -15,6 +15,7 @@ export class Trace extends Contract {
     public operatorsMapping: string[] = ['$eq', '$gt', '$gte', '$lt', '$lte', '$ne'];
     public explicitOpertors: string[] = ['OR', 'AND', 'NOR', 'NOT'];
     public explicitOpertorsMapping: string[] = ['$or', '$and', '$nor', '$not'];
+    public itnIndexName:string="itn-index";
         
     public async initTraceLedger(ctx: Context) {
         console.info('============= START : Initialize initTraceLedger ===========');
@@ -56,7 +57,6 @@ export class Trace extends Contract {
             throw new Error(`${poNumber} does not exist queryPO`);
         }
         console.log(poAsBytes.toString());
-
         return poAsBytes.toString();
     }
 
@@ -83,10 +83,12 @@ export class Trace extends Contract {
 
     public async queryDb(ctx: Context, queryString: string, type = 'OR'): Promise<string> {
         console.info('============= START : Genric Query DB ===========');
+        var statTime= Date.now();
         const queryStr = this.constructQueryStr(queryString, type);
         const queryData = [];
         const queryIt: Iterators.StateQueryIterator = await ctx.stub.getQueryResult(queryStr);
         const resp = await this.serializeData(queryData, queryIt);
+        console.info('Query Response Time:-->',(Date.now()-statTime));
         console.info('============= END : Genric Query DB ===========resp************************', JSON.stringify(resp));
         return resp;
     }
@@ -267,8 +269,12 @@ export class Trace extends Contract {
             this.embedNestedObj(tmp, paramName, operator, val);
         });
         const explicitOp = this.explicitOpertorsMapping[this.explicitOpertors.indexOf(type)];
-        const tmpObj = { selector: {} };
+        const tmpObj = { selector: {},
+                        use_index:{}
+                       };
         tmpObj.selector[`${explicitOp}`] = this.putObjInArr(tmp);
+        tmpObj.use_index = this.itnIndexName;
+        console.log('query selector:::',JSON.stringify(tmpObj));
         return JSON.stringify(tmpObj);
     }
 
