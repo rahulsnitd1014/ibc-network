@@ -16,6 +16,7 @@ export class Trace extends Contract {
     public explicitOpertors: string[] = ['OR', 'AND', 'NOR', 'NOT'];
     public explicitOpertorsMapping: string[] = ['$or', '$and', '$nor', '$not'];
     public itnIndexName:string="itn-index";
+    
         
     public async initTraceLedger(ctx: Context) {
         console.info('============= START : Initialize initTraceLedger ===========');
@@ -81,14 +82,16 @@ export class Trace extends Contract {
         return productJson;
     }
 
-    public async queryDb(ctx: Context, queryString: string, type = 'OR'): Promise<string> {
+    public async queryDb(ctx: Context, queryString: string,clientCode,encLogic,docType, type = 'OR'): Promise<string> {
         console.info('============= START : Genric Query DB ===========');
         var statTime= Date.now();
-        const queryStr = this.constructQueryStr(queryString, type);
+        const queryStr = this.constructQueryStr(queryString,clientCode,encLogic,docType, type);
         const queryData = [];
         const queryIt: Iterators.StateQueryIterator = await ctx.stub.getQueryResult(queryStr);
         const resp = await this.serializeData(queryData, queryIt);
         console.info('Query Response Time:-->',(Date.now()-statTime));
+        // console.info('Changes-->',(Date.now()-statTime));
+
         console.info('============= END : Genric Query DB ===========resp************************', JSON.stringify(resp));
         return resp;
     }
@@ -232,7 +235,7 @@ export class Trace extends Contract {
         return arr;
     }
 
-    private constructQueryStr(str, type = 'OR'): string {
+    private constructQueryStr(str,clientCode,encLogic,docType,type = 'OR'): string {
         const param = str.split(',');
         const paramsArr = [];
         param.map((prm) => {
@@ -256,11 +259,11 @@ export class Trace extends Contract {
             tmp = [tmp[0], operator, tmp[1]];
             paramsArr.push(tmp);
         });
-        const tmpStr: string = this.constructQueryObj(paramsArr, type);
+        const tmpStr: string = this.constructQueryObj(paramsArr,clientCode,encLogic,docType, type);
         return tmpStr;
     }
 
-    private constructQueryObj(objArr, type): string {
+    private constructQueryObj(objArr,clientCode,encLogic,docType, type): string {
         const tmp = {};
         objArr.map((obj) => {
             const paramName = obj[0];
@@ -269,10 +272,13 @@ export class Trace extends Contract {
             this.embedNestedObj(tmp, paramName, operator, val);
         });
         const explicitOp = this.explicitOpertorsMapping[this.explicitOpertors.indexOf(type)];
-        const tmpObj = { selector: {},
+        const tmpObj = { selector: { clientCode:{},docType:{}, encLogic:{}  },
                         use_index:{}
                        };
         tmpObj.selector[`${explicitOp}`] = this.putObjInArr(tmp);
+        tmpObj.selector.clientCode=clientCode;
+        tmpObj.selector.docType=docType;
+        tmpObj.selector.encLogic=encLogic;
         tmpObj.use_index = this.itnIndexName;
         console.log('query selector:::',JSON.stringify(tmpObj));
         return JSON.stringify(tmpObj);
