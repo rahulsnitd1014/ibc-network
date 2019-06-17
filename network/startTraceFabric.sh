@@ -220,6 +220,7 @@ function networkUp() {
 # Stop the orderer and peers, backup the ledger for orderer and peers, cleanup chaincode containers and images
 # and relaunch the orderer and peers with latest tag
 function upgradeNetwork() {
+  checkPrereqs
   if [[ "$IMAGETAG" == *"1.4"* ]] || [[ $IMAGETAG == "latest" ]]; then
     docker inspect -f '{{.Config.Volumes}}' orderer.example.com | grep -q '/var/hyperledger/production/orderer'
     if [ $? -ne 0 ]; then

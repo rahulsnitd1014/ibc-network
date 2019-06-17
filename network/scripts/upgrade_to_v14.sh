@@ -36,8 +36,8 @@ echo "Channel name : "$CHANNEL_NAME
 sleep $DELAY
 
 #Query on chaincode on Peer0/Org1
-echo "Querying chaincode on org1/peer0..."
-chaincodeQuery 0 1 90
+#echo "Querying chaincode on org1/peer0..."
+#chaincodeQuery 0 1 90
 
 sleep $DELAY
 
@@ -48,8 +48,8 @@ chaincodeInvoke 0 1 0 2
 sleep $DELAY
 
 #Query on chaincode on Peer0/Org1
-echo "Querying chaincode on org1/peer0..."
-chaincodeQuery 0 1 80
+#echo "Querying chaincode on org1/peer0..."
+#chaincodeQuery 0 1 80
 
 echo
 echo "===================== All GOOD, End-2-End UPGRADE Scenario execution completed ===================== "
