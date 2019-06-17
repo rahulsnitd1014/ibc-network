@@ -1,0 +1,7 @@
+{
+    "index": {
+        "fields": ["clientCode","docType","encLogic","startITN","endITN"]
+    },
+    "name" : "itn-index",
+    "type" : "json"
+}
