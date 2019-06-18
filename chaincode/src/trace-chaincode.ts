@@ -169,7 +169,7 @@ export class Trace extends Contract {
 
     public async queryHistoryByKeyRange(ctx: Context, clientCode: string, encLogic: string, searchITN: string,
         docType: string): Promise<string> {
-        console.info('============= START : queryHistoryByKeyRange ===========');
+        console.info('=============START : queryHistoryByKeyRange ===========');
         if (!searchITN) {
             throw ({ err: 'queryHistoryByKeyRange startITN is required field' });
         }
@@ -195,11 +195,11 @@ export class Trace extends Contract {
             searchITNo = parseInt(searchITN);
 
             if ((searchITNo >= parseInt(returnedStartItn)) && (searchITNo <= parseInt(returnedEndItn))) {
-                console.info("- found a record from client:%s EncType:%s StartItn:%s EndItn:%s\n", returnedClientCode, returnedEncType, returnedStartItn, returnedEndItn);
+            //console.info("- found a record from client:%s EncType:%s StartItn:%s EndItn:%s\n", returnedClientCode, returnedEncType, returnedStartItn, returnedEndItn);
                 const indexName = "clientCode~encLogic~startITN~endITN";
                 const recordToSearch = ctx.stub.createCompositeKey(indexName, [clientCode, encLogic, returnedStartItn, returnedEndItn]);
                 console.info('============= queryHistoryByKeyRange recordToSearch::', recordToSearch);
-                await eventJsonData.push(... await this.queryHistoryByKey(ctx, recordToSearch, docType));
+                await eventJsonData.push(await this.queryHistoryByKey(ctx, recordToSearch, docType));
             }
 
         }
@@ -210,6 +210,7 @@ export class Trace extends Contract {
         return eventJsonData;
     }
 
+      
     private async serializeData(arr, obj: Iterators.HistoryQueryIterator | Iterators.StateQueryIterator) {
         let flag = true;
         while (flag) {

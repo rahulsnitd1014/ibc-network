@@ -73,6 +73,7 @@ function printHelp() {
 
 # Ask user for confirmation to proceed
 function askProceed() {
+
   read -p "Continue? [Y/n] " ans
   case "$ans" in
   y | Y | "")
@@ -92,7 +93,7 @@ function askProceed() {
 # Obtain CONTAINER_IDS and remove them
 # TODO Might want to make this optional - could clear other containers
 function clearContainers() {
-  CONTAINER_IDS=$(docker ps -a | awk '($2 ~ /dev-peer.*.mycc.*/) {print $1}')
+  CONTAINER_IDS=$(docker ps -a | awk '($2 ~ /dev-peer.*.ibccc.*/) {print $1}')
   if [ -z "$CONTAINER_IDS" -o "$CONTAINER_IDS" == " " ]; then
     echo "---- No containers available for deletion ----"
   else
@@ -104,11 +105,12 @@ function clearContainers() {
 # specifically the following images are often left behind:
 # TODO list generated image naming patterns
 function removeUnwantedImages() {
-  DOCKER_IMAGE_IDS=$(docker images | awk '($1 ~ /dev-peer.*.mycc.*/) {print $3}')
+  DOCKER_IMAGE_IDS=$(docker images | awk '($1 ~ /dev-peer.*.ibccc.*/) {print $3}')
   if [ -z "$DOCKER_IMAGE_IDS" -o "$DOCKER_IMAGE_IDS" == " " ]; then
     echo "---- No images available for deletion ----"
   else
     docker rmi -f $DOCKER_IMAGE_IDS
+    # docker rmi -f $DOCKER_IMAGE_IDS | grep -v "couchdb" | awk 'NR>1 {print $1}'
   fi
 }
 
@@ -220,6 +222,14 @@ function networkUp() {
 # Stop the orderer and peers, backup the ledger for orderer and peers, cleanup chaincode containers and images
 # and relaunch the orderer and peers with latest tag
 function upgradeNetwork() {
+  CC_RUNTIME_LANGUAGE=node # chaincode runtime language is node.js
+	CC_SRC_PATH=/opt/gopath/src/github.com/chaincode
+	echo Compiling TypeScript code into JavaScript ...
+	pushd ../chaincode
+	npm install
+	npm run build
+	popd
+	echo Finished compiling TypeScript code into JavaScript
   if [[ "$IMAGETAG" == *"1.4"* ]] || [[ $IMAGETAG == "latest" ]]; then
     docker inspect -f '{{.Config.Volumes}}' orderer.example.com | grep -q '/var/hyperledger/production/orderer'
     if [ $? -ne 0 ]; then
@@ -292,7 +302,9 @@ function upgradeNetwork() {
 function networkDown() {
   # stop org3 containers also in addition to org1 and org2, in case we were running sample to add org3
   # stop kafka and zookeeper containers in case we're running with kafka consensus-type
+  #docker-compose -f $COMPOSE_FILE -f $COMPOSE_FILE_KAFKA -f $COMPOSE_FILE_RAFT2 -f $COMPOSE_FILE_CA -f $COMPOSE_FILE_ORG3 down --volumes --remove-orphans | grep -v "couchdb0"
   docker-compose -f $COMPOSE_FILE -f $COMPOSE_FILE_COUCH -f $COMPOSE_FILE_KAFKA -f $COMPOSE_FILE_RAFT2 -f $COMPOSE_FILE_CA -f $COMPOSE_FILE_ORG3 down --volumes --remove-orphans
+ # echo "docker-compose -f $COMPOSE_FILE -f $COMPOSE_FILE_COUCH -f $COMPOSE_FILE_KAFKA -f $COMPOSE_FILE_RAFT2 -f $COMPOSE_FILE_CA -f $COMPOSE_FILE_ORG3 down --volumes --remove-orphans"
 
   # Don't remove the generated artifacts -- note, the ledgers are always removed
   if [ "$MODE" != "restart" ]; then
@@ -497,6 +509,28 @@ function generateChannelArtifacts() {
   echo
 }
 
+function upgradeChaincode() {
+  CC_RUNTIME_LANGUAGE=node # chaincode runtime language is node.js
+	CC_SRC_PATH=/opt/gopath/src/github.com/chaincode
+
+  UPGRADE_CC_VERSION=$(cat config.json | jq .upgradeToVersion)
+	echo Compiling TypeScript code into JavaScript ...
+	pushd ../chaincode
+	npm install
+	npm run build
+	popd
+	echo Finished compiling TypeScript code into JavaScript
+
+  docker exec cli scripts/upgradeCC.sh $CHANNEL_NAME $CLI_DELAY $LANGUAGE $CLI_TIMEOUT $VERBOSE $UPGRADE_CC_VERSION
+    
+    if [ $? -ne 0 ]; then
+      echo "ERROR !!!! Upgrade  failed"
+      exit 1
+    fi
+    #echo "========= CHAINCODE UPGRADE IS SUCCESSFULLY DONE ========="
+ 
+}
+
 # Obtain the OS and Architecture string that will be used to select the correct
 # native binaries for your platform, e.g., darwin-amd64 or linux-amd64
 OS_ARCH=$(echo "$(uname -s | tr '[:upper:]' '[:lower:]' | sed 's/mingw64_nt.*/windows/')-$(uname -m | sed 's/x86_64/amd64/g')" | awk '{print tolower($0)}')
@@ -505,8 +539,8 @@ OS_ARCH=$(echo "$(uname -s | tr '[:upper:]' '[:lower:]' | sed 's/mingw64_nt.*/wi
 CLI_TIMEOUT=10
 # default for delay between commands
 CLI_DELAY=3
-# channel name defaults to "mychannel"
-CHANNEL_NAME="mychannel"
+# channel name taken from config.json
+CHANNEL_NAME=$(cat config.json | jq .channelName | sed -e 's/^"//' -e 's/"$//')
 # use this as the default docker-compose yaml definition
 COMPOSE_FILE=docker-compose-cli.yaml
 #
@@ -526,6 +560,12 @@ LANGUAGE=node
 IMAGETAG="latest"
 # default consensus type
 CONSENSUS_TYPE="solo"
+#Upgraded Chaincode Version 
+#UPGRADE_CC_VERSION="1.9"
+
+
+
+
 # Parse commandline args
 if [ "$1" = "-m" ]; then # supports old usage, muscle memory is powerful!
   shift
@@ -543,12 +583,14 @@ elif [ "$MODE" == "generate" ]; then
   EXPMODE="Generating certs and genesis block"
 elif [ "$MODE" == "upgrade" ]; then
   EXPMODE="Upgrading the network"
+elif [ "$MODE" == "upgradeCCVersion" ]; then ## Upgrade the network from version 1.2.x to 1.3.x
+  EXPMODE="Upgrade Chaincode Version"  
 else
   printHelp
   exit 1
 fi
 
-while getopts "h?c:t:d:f:s:l:i:o:anv" opt; do
+while getopts "h?c:t:d:f:s:l:i:o:u:anv" opt; do
   case "$opt" in
   h | \?)
     printHelp
@@ -577,6 +619,9 @@ while getopts "h?c:t:d:f:s:l:i:o:anv" opt; do
     ;;
   o)
     CONSENSUS_TYPE=$OPTARG
+    ;;
+  u)
+    UPGRADE_CHAINCODE_VERSION=$OPTARG
     ;;
   a)
     CERTIFICATE_AUTHORITIES=true
@@ -616,6 +661,8 @@ elif [ "${MODE}" == "restart" ]; then ## Restart the network
   networkUp
 elif [ "${MODE}" == "upgrade" ]; then ## Upgrade the network from version 1.2.x to 1.3.x
   upgradeNetwork
+elif [ "${MODE}" == "upgradeCCVersion" ]; then ## Upgrade the chaincode version
+  upgradeChaincode  
 else
   printHelp
   exit 1

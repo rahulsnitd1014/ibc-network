@@ -119,7 +119,7 @@ installChaincode() {
   setGlobals $PEER $ORG
   VERSION=${3:-1.0}
   set -x
-  peer chaincode install -n mycc -v ${VERSION} -l ${LANGUAGE} -p ${CC_SRC_PATH} >&log.txt
+  peer chaincode install -n ibccc -v ${VERSION} -l ${LANGUAGE} -p ${CC_SRC_PATH} >&log.txt
   res=$?
   set +x
   cat log.txt
@@ -139,12 +139,12 @@ instantiateChaincode() {
   # the "-o" option
   if [ -z "$CORE_PEER_TLS_ENABLED" -o "$CORE_PEER_TLS_ENABLED" = "false" ]; then
     set -x
-    peer chaincode instantiate -o orderer.example.com:7050 -C $CHANNEL_NAME -n mycc -l ${LANGUAGE} -v ${VERSION} -c '{"Args":["initTraceLedger"]}' -P "OR ('Org1MSP.peer','Org2MSP.peer')" >&log.txt
+    peer chaincode instantiate -o orderer.example.com:7050 -C $CHANNEL_NAME -n ibccc -l ${LANGUAGE} -v ${VERSION} -c '{"Args":["initTraceLedger"]}' -P "OR ('Org1MSP.peer','Org2MSP.peer')" >&log.txt
     res=$?
     set +x
   else
     set -x
-    peer chaincode instantiate -o orderer.example.com:7050 --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME -n mycc -l ${LANGUAGE} -v 1.0 -c '{"Args":["initTraceLedger"]}' -P "OR ('Org1MSP.peer','Org2MSP.peer')" >&log.txt
+    peer chaincode instantiate -o orderer.example.com:7050 --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME -n ibccc -l ${LANGUAGE} -v 1.0 -c '{"Args":["initTraceLedger"]}' -P "OR ('Org1MSP.peer','Org2MSP.peer')" >&log.txt
     res=$?
     set +x
   fi
@@ -157,10 +157,12 @@ instantiateChaincode() {
 upgradeChaincode() {
   PEER=$1
   ORG=$2
+  VERSION=$3
+  CHANNEL=$4
   setGlobals $PEER $ORG
 
   set -x
-  peer chaincode upgrade -o orderer.example.com:7050 --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME -n mycc -v 2.0 -c '{"Args":["initTraceLedger"]}' -P "AND ('Org1MSP.peer','Org2MSP.peer','Org3MSP.peer')"
+  peer chaincode upgrade -o orderer.example.com:7050 --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL -n ibccc -v $VERSION -c '{"Args":["initTraceLedger"]}' -P "OR ('Org1MSP.peer','Org2MSP.peer')"
   res=$?
   set +x
   cat log.txt
@@ -173,8 +175,9 @@ chaincodeQuery() {
   PEER=$1
   ORG=$2
   setGlobals $PEER $ORG
-  EXPECTED_RESULT=$3
-  echo "===================== Querying on peer${PEER}.org${ORG} on channel '$CHANNEL_NAME'... ===================== "
+  #EXPECTED_RESULT=$3
+  ARGS = $3
+  echo "===================== Querying on peer${PEER}.org${ORG} on channel '$CHANNEL_NAME'... with Args: ${3} on '$4'  ===================== "
   local rc=1
   local starttime=$(date +%s)
 
@@ -186,9 +189,9 @@ chaincodeQuery() {
     sleep $DELAY
     echo "Attempting to Query peer${PEER}.org${ORG} ...$(($(date +%s) - starttime)) secs"
     set -x
-    peer chaincode query -C $CHANNEL_NAME -n mycc -c '{"Args":[]}' >&log.txt
-   # peer chaincode query -C $CHANNEL_NAME -n mycc -c '{"Args":["createItemEvent", "123", "4", "12", "20", "{}"]}' >&log.txt
-  #  peer chaincode invoke -o orderer.example.com:7050 --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME -n mycc $PEER_CONN_PARMS -c '{"Args":["createItemEvent", "123", "4", "12", "20", "{}"]}' >&log.txt
+    peer chaincode query -C $CHANNEL_NAME -n ibccc -c '{"Args":["'$3'","'$4'","'$5'","'$6'","'$7'"]}' >&log.txt
+   # peer chaincode query -C $CHANNEL_NAME -n ibccc -c '{"Args":["createItemEvent", "123", "4", "12", "20", "{}"]}' >&log.txt
+  #  peer chaincode invoke -o orderer.example.com:7050 --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME -n ibccc $PEER_CONN_PARMS -c '{"Args":["createItemEvent", "123", "4", "12", "20", "{}"]}' >&log.txt
     res=$?
     set +x
     test $res -eq 0 && VALUE=$(cat log.txt | awk '/Query Result/ {print $NF}')
@@ -202,7 +205,7 @@ chaincodeQuery() {
   echo
   cat log.txt
   if test $rc -eq 0; then
-    echo "===================== Query successful on peer${PEER}.org${ORG} on channel '$CHANNEL_NAME' ===================== "
+    echo "===================== Query successful on peer${PEER}.org${ORG} on channel '$CHANNEL_NAME' for Args '$ARGS'===================== "
   else
     echo "!!!!!!!!!!!!!!! Query result on peer${PEER}.org${ORG} is INVALID !!!!!!!!!!!!!!!!"
     echo "================== ERROR !!! FAILED to execute End-2-End Scenario =================="
@@ -261,7 +264,7 @@ createConfigUpdate() {
   configtxlator proto_encode --input "${MODIFIED}" --type common.Config >modified_config.pb
   configtxlator compute_update --channel_id "${CHANNEL}" --original original_config.pb --updated modified_config.pb >config_update.pb
   configtxlator proto_decode --input config_update.pb --type common.ConfigUpdate >config_update.json
-  echo '{"payload":{"header":{"channel_header":{"channel_id":"'$CHANNEL'", "type":2}},"data":{"config_update":'$(cat config_update.json)'}}}' | jq . >config_update_in_envelope.json
+  echo '{"payload":{"header":{"channel_header":{"channel_id":"'$CHANNEL'", "type":2}},"data":{"config_update":'$(cat config_update.json)'}}}' | jupgradeChaincode . >config_update_in_envelope.json
   configtxlator proto_encode --input config_update_in_envelope.json --type common.Envelope >"${OUTPUT}"
   set +x
 }
@@ -307,27 +310,35 @@ chaincodeInvoke() {
   # it using the "-o" option
   if [ -z "$CORE_PEER_TLS_ENABLED" -o "$CORE_PEER_TLS_ENABLED" = "false" ]; then
     set -x
-    peer chaincode invoke -o orderer.example.com:7050 -C $CHANNEL_NAME -n mycc $PEER_CONN_PARMS -c '{"Args":["initTraceLedger"]}' >&log.txt
+    peer chaincode invoke -o orderer.example.com:7050 -C $CHANNEL_NAME -n ibccc $PEER_CONN_PARMS -c '{"Args":["initTraceLedger"]}' >&log.txt
     res=$?
     set +x
   else
     set -x
     
-	  peer chaincode invoke -o orderer.example.com:7050 --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME -n mycc $PEER_CONN_PARMS -c '{"Args":["createItemEvent", "123", "4", "15", "20", "abc"]}' >&log.txt
-#peer chaincode invoke -o orderer.example.com:7050 --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME -n mycc $PEER_CONN_PARMS -c '{"Args":["createItemEvent", "123", "4", "11", "25", "{}"]}' >&log.txt
-    peer chaincode invoke -o orderer.example.com:7050 --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME -n mycc $PEER_CONN_PARMS -c '{"Args":["createItemEvent", "123", "4", "10", "20", "{}"]}' >&log.txt
+	  #peer chaincode invoke -o orderer.example.com:7050 --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME -n ibccc $PEER_CONN_PARMS -c '{"Args":["createItemEvent", "123", "4", "15", "20", "abc"]}' >&log.txt
+#peer chaincode invoke -o orderer.example.com:7050 --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME -n ibccc $PEER_CONN_PARMS -c '{"Args":["createItemEvent", "123", "4", "11", "25", "{}"]}' >&log.txt
+    # peer chaincode invoke -o orderer.example.com:7050 --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME -n ibccc $PEER_CONN_PARMS -c '{"Args":["createItemEvent", "123", "4", "10", "20", "{}"]}' >&log.txt
 
-    peer chaincode invoke -o orderer.example.com:7050 --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME -n mycc $PEER_CONN_PARMS -c '{"Args":["createItemEvent", "123", "4", "25", "70", "{}""]}' >&log.txt
+    # peer chaincode invoke -o orderer.example.com:7050 --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME -n ibccc $PEER_CONN_PARMS -c '{"Args":["createItemEvent", "123", "4", "25", "70", "{}"]}' >&log.txt
 
     
-    peer chaincode invoke -o orderer.example.com:7050 --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME -n mycc $PEER_CONN_PARMS -c '{"Args":["createItemEvent", "125", "4", "10", "40", "{}"]}' >&log.txt
+    # peer chaincode invoke -o orderer.example.com:7050 --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME -n ibccc $PEER_CONN_PARMS -c '{"Args":["createItemEvent", "125", "4", "10", "40", "{}"]}' >&log.txt
 
-    peer chaincode invoke -o orderer.example.com:7050 --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME -n mycc $PEER_CONN_PARMS -c '{"Args":["createItemEvent", "125", "4", "20", "40", "{}"]}' >&log.txt
+    # peer chaincode invoke -o orderer.example.com:7050 --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME -n ibccc $PEER_CONN_PARMS -c '{"Args":["createItemEvent", "125", "4", "20", "40", "{}"]}' >&log.txt
     
-    peer chaincode invoke -o orderer.example.com:7050 --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME -n mycc $PEER_CONN_PARMS -c '{"Args":["createItemEvent", "123", "4", "55", "60","{}"]}' >&log.txt
+    peer chaincode invoke -o orderer.example.com:7050 --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME -n ibccc $PEER_CONN_PARMS -c '{"Args":["createItemEvent", "123", "4", "55", "60","{}"]}' >&log.txt
+
+    peer chaincode invoke -o orderer.example.com:7050 --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME -n ibccc $PEER_CONN_PARMS -c '{"Args":["createItemEvent", "127", "4", "10", "40", "{}"]}' >&log.txt
+
+    peer chaincode invoke -o orderer.example.com:7050 --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME -n ibccc $PEER_CONN_PARMS -c '{"Args":["createItemEvent", "128", "4", "20", "40", "{}"]}' >&log.txt
+    
+    peer chaincode invoke -o orderer.example.com:7050 --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME -n ibccc $PEER_CONN_PARMS -c '{"Args":["createItemEvent", "129", "4", "55", "60","{}"]}' >&log.txt
+
+
 
     #sleep 10
-    #peer chaincode invoke -o orderer.example.com:7050 --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME -n mycc $PEER_CONN_PARMS -c '{"Args":["queryHistoryByKeyRange", "123","14","12","{}"]}' >&log.txt
+    #peer chaincode invoke -o orderer.example.com:7050 --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME -n ibccc $PEER_CONN_PARMS -c '{"Args":["queryHistoryByKeyRange", "123","14","12","{}"]}' >&log.txt
     res=$?
     set +x
   fi

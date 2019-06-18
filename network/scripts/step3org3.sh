@@ -13,14 +13,14 @@
 #
 
 echo
-echo "========= Finish adding Org3 to your first network ========= "
+#echo "========= Finish adding Org3 to your first network ========= "
+echo "========= Upgrading chaincode for your network ========= "
 echo
 CHANNEL_NAME="$1"
 DELAY="$2"
 LANGUAGE="$3"
 TIMEOUT="$4"
 VERBOSE="$5"
-: ${CHANNEL_NAME:="mychannel"}
 : ${DELAY:="3"}
 : ${LANGUAGE:="golang"}
 : ${TIMEOUT:="10"}
@@ -29,24 +29,24 @@ LANGUAGE=`echo "$LANGUAGE" | tr [:upper:] [:lower:]`
 COUNTER=1
 MAX_RETRY=5
 
-CC_SRC_PATH="github.com/chaincode/chaincode_example02/go/"
+CC_SRC_PATH="github.com/chaincode/"
 if [ "$LANGUAGE" = "node" ]; then
-	CC_SRC_PATH="/opt/gopath/src/github.com/chaincode/chaincode_example02/node/"
+	CC_SRC_PATH="/opt/gopath/src/github.com/chaincode/"
 fi
 
 # import utils
 . scripts/utils.sh
 
 echo "===================== Installing chaincode 2.0 on peer0.org1 ===================== "
-installChaincode 0 1 2.0
+installChaincode 0 1 1.1
 echo "===================== Installing chaincode 2.0 on peer0.org2 ===================== "
-installChaincode 0 2 2.0
+installChaincode 0 2 1.1
 
 echo "===================== Upgrading chaincode on peer0.org1 ===================== "
-upgradeChaincode 0 1
+upgradeChaincode 0 1 1.1 tracechannel
 
 echo
-echo "========= Finished adding Org3 to your first network! ========= "
+echo "========= Finished Upgrading CC  ========= "
 echo
 
 exit 0

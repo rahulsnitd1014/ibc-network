@@ -89,7 +89,7 @@ if [ "${NO_CHAINCODE}" != "true" ]; then
 	## Install chaincode on peer0.org1 and peer0.org2
 	echo "Installing chaincode on peer0.org1..."
 	installChaincode 0 1
-#	echo "Install chaincode on peer0.org2..."
+	echo "Install chaincode on peer0.org2..."
 	installChaincode 0 2
 
 	## Install chaincode on peer1.org1
@@ -125,6 +125,7 @@ if [ "${NO_CHAINCODE}" != "true" ]; then
 	# Invoke chaincode on peer0.org1 and peer0.org2
 	#echo "Sending invoke transaction on peer0.org1 peer0.org2..."
 	chaincodeInvoke 0 1
+	#chaincodeInvoke 0 2
 	
 
 	# Query on chaincode on peer1.org2, check if the result is 90
