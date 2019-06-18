@@ -36,9 +36,8 @@ echo "Channel name : "$CHANNEL_NAME
 sleep $DELAY
 
 #Query on chaincode on Peer0/Org1
-echo "Querying chaincode on org1/peer0..."
+#echo "Querying chaincode on org1/peer0..."
 #chaincodeQuery 0 1 90
-chaincodeQuery 0 2 queryHistoryByKeyRange 123 4 60 {}
 
 sleep $DELAY
 
