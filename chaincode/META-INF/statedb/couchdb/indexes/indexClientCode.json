@@ -1,0 +1,8 @@
+{
+    "index":{
+        "fields":["ClientCode"] 
+    },
+    "ddoc":"indexClientCodeDoc", 
+    "name":"indexClientCode",
+    "type":"json"
+}

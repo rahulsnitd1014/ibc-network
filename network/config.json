@@ -1,0 +1,5 @@
+{
+    "channelName" : "ibcchannel",
+    "chaincodeName":"ibccc",
+    "upgradeToVersion" :1.2
+}

@@ -1,0 +1,11 @@
+{"index":
+    {
+        "fields":["StartITN","EndITN"]
+    },
+    "ddoc":"indexStartItnEndItnDoc", 
+    "name":"indexStartItnEndItn",
+    "type":"json"
+}
+
+  
+ 
